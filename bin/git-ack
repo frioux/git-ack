@@ -1,0 +1,52 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use FindBin;
+
+if (is_git_repo()) {
+   require JSON;
+   JSON->import('from_json');
+   my %types = %{from_json(do { local( @ARGV, $/ ) = "$FindBin::Bin/../var/types.json"; <> })};
+
+
+   my @args;
+
+   my @glob;
+
+   for (@ARGV) {
+      if ($_ =~ /--(.*)/) {
+         my $opt = $1;
+         if ($opt =~ /no-(.*)/) {
+            my $un_opt = $1;
+            if (my $to_remove = $types{$un_opt}) {
+               next;
+            }
+         } elsif (my $to_add = $types{$opt}) {
+            push @glob, @$to_add;
+            next;
+         }
+      }
+      push @args, $_;
+   }
+   if (@glob) {
+      push @args, '--', map "*.$_", @glob
+   }
+   use Devel::Dwarn;
+   Dwarn \@args;
+   run_command(qw(git grep), @args);
+} else {
+   run_command(qw(ack-grep), @ARGV);
+}
+
+sub run_command {
+   system @_;
+   exit $? >> 8;
+}
+
+sub is_git_repo {
+   system 'git rev-parse --git-dir 2> /dev/null';
+
+   ($? >> 8) != 128
+}
+

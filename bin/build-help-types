@@ -1,0 +1,23 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use JSON;
+
+my @lines = split /\n/, ((split /\n\n/, qx(ack-grep --help-types))[3]);
+
+my %types;
+
+for (@lines) {
+   die q(I can't parse the output of ack anymore!)
+      unless /--\[no\](\w+)\s+(.+)/;
+
+   my ($type, $extensions) = ($1, $2);
+
+   if ($extensions =~ /^\./) {
+      $types{$type} = [map s/^\.//r, split /\s+/, $extensions]
+   }
+}
+
+print to_json \%types;
